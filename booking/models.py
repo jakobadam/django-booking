@@ -6,32 +6,7 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
-from django_libs.models_mixins import TranslationModelMixin
 from django_countries.fields import CountryField
-from hvad.models import TranslatableModel, TranslatedFields
-
-
-class BookingStatus(TranslationModelMixin, TranslatableModel):
-    """
-    Master data containing all booking status.
-    For translatable fields check ``BookingStatusTranslation``.
-
-    :slug: A unique slug identifier.
-
-    translated:
-    :name: The displayable name for the status.
-
-    """
-    slug = models.SlugField(
-        verbose_name=_('Slug'),
-    )
-
-    translations = TranslatedFields(
-        name=models.CharField(
-            verbose_name=_('Name'),
-            max_length=128,
-        )
-    )
 
 
 @python_2_unicode_compatible
@@ -51,8 +26,7 @@ class Booking(models.Model):
     :forename (optional): First name of the user.
     :surname (optional): Last name of the user.
     :nationality (optional): The nationality of the user.
-    :street1 (optional): Street address of the user.
-    :street2 (optional): Additional street address of the user.
+    :street (optional): Street address of the user.
     :city (optional): City of the user's address.
     :zip_code (optional): ZIP of the user's address.
     :country (optional): Country of the user's address.
@@ -73,6 +47,17 @@ class Booking(models.Model):
     :currency (optional): If total is uses, we usually also need a currency.
 
     """
+
+    STATUS_NEW = 'status-new'
+    STATUS_CONFIRMED = 'status-confirmed'
+    STATUS_PAID = 'status-paid'
+
+    STATUS_CHOICES = (
+      (STATUS_NEW, 'new'),
+      (STATUS_CONFIRMED, 'confirmed'),
+      (STATUS_PAID, 'paid')
+    )
+
     user = models.ForeignKey(
         'auth.User',
         verbose_name=_('User'),
@@ -86,36 +71,15 @@ class Booking(models.Model):
         blank=True, null=True,
     )
 
-    gender = models.CharField(
-        max_length=10,
-        verbose_name=_('Gender'),
-        choices=(
-            ('mrs', _('Mrs')),
-            ('mr', _('Mr')),
-        ),
-        blank=True,
-    )
-
-    title = models.CharField(
-        max_length=10,
-        verbose_name=_('Title'),
-        choices=(
-            ('dr', _('Dr.')),
-            ('prof', _('Prof.')),
-        ),
-        blank=True,
-    )
 
     forename = models.CharField(
         verbose_name=_('First name'),
-        max_length=20,
-        blank=True,
+        max_length=20
     )
 
     surname = models.CharField(
         verbose_name=_('Last name'),
-        max_length=20,
-        blank=True,
+        max_length=20
     )
 
     nationality = CountryField(
@@ -124,14 +88,8 @@ class Booking(models.Model):
         blank=True,
     )
 
-    street1 = models.CharField(
-        verbose_name=_('Street 1'),
-        max_length=256,
-        blank=True,
-    )
-
-    street2 = models.CharField(
-        verbose_name=_('Street 2'),
+    street = models.CharField(
+        verbose_name=_('Street'),
         max_length=256,
         blank=True,
     )
@@ -139,6 +97,12 @@ class Booking(models.Model):
     city = models.CharField(
         verbose_name=_('City'),
         max_length=256,
+        blank=True,
+    )
+
+    booking_id = models.CharField(
+        max_length=100,
+        verbose_name=_('Booking ID'),
         blank=True,
     )
 
@@ -186,16 +150,12 @@ class Booking(models.Model):
         auto_now_add=True,
     )
 
-    booking_id = models.CharField(
-        max_length=100,
-        verbose_name=_('Booking ID'),
-        blank=True,
-    )
-
-    booking_status = models.ForeignKey(
-        'booking.BookingStatus',
+    booking_status = models.CharField(
+        max_length=20,
         verbose_name=('Booking status'),
         blank=True, null=True,
+        choices=STATUS_CHOICES,
+        default=STATUS_NEW
     )
 
     notes = models.TextField(
@@ -229,13 +189,33 @@ class Booking(models.Model):
         blank=True,
     )
 
+    quantity = models.PositiveIntegerField(
+        default=1,
+        verbose_name=_('Quantity'),
+    )
+
+    subtotal = models.DecimalField(
+        max_digits=36,
+        decimal_places=2,
+        verbose_name=_('Subtotal'),
+        blank=True, null=True,
+    )
+
+    activity = models.ForeignKey(
+        'activity.Activity',
+        verbose_name=_('Activity'),
+    )
+
+
     class Meta:
         ordering = ['-creation_date']
 
     def __str__(self):
-        return '#{} ({})'.format(self.booking_id or self.pk,
+        return u'#{} ({})'.format(self.booking_id or self.pk,
                                  self.creation_date)
-
+    @property
+    def price(self):
+      return self.quantity * self.activity.price
 
 @python_2_unicode_compatible
 class BookingError(models.Model):

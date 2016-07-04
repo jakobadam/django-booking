@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm
 from django.utils.translation import ugettext_lazy as _
 
-from .models import Booking, BookingStatus
+from .models import Booking
 
 
 class BookingForm(forms.ModelForm):
@@ -29,15 +29,12 @@ class BookingForm(forms.ModelForm):
         if not self.instance.pk:
             self.instance.user = self.user
             self.instance.session = self.session
-            status_object, created = BookingStatus.objects.get_or_create(
-                slug=getattr(settings, 'BOOKING_STATUS_CREATED', 'pending'))
-            self.instance.booking_status = status_object
         return super(BookingForm, self).save(*args, **kwargs)
 
     class Meta:
         model = Booking
-        fields = ('gender', 'title', 'forename', 'surname', 'nationality',
-                  'street1', 'street2', 'city', 'zip_code', 'country', 'phone',
+        fields = ('forename', 'surname', 'nationality',
+                  'street','city', 'zip_code', 'country', 'phone',
                   'special_request', 'date_from', 'date_until')
 
 
